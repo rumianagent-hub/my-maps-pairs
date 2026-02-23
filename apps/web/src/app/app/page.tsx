@@ -12,6 +12,7 @@ import DecideCard from '@/components/DecideCard';
 import StatsPanel from '@/components/StatsPanel';
 import SessionManager from '@/components/SessionManager';
 import ExploreTab from '@/components/ExploreTab';
+import OnboardingModal from '@/components/OnboardingModal';
 import { addRestaurantFn } from '@/lib/firebase';
 import { logEvent } from '@/lib/analytics';
 
@@ -29,6 +30,7 @@ export default function AppPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AppTab>('list');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { summary, loading: summaryLoading, error, refresh } = usePairSummary(activePairId, user?.uid ?? null);
 
   useEffect(() => {
@@ -39,6 +41,21 @@ export default function AppPage() {
     }
     if (!activePairId) router.replace('/pair');
   }, [user, loading, activePairId, router]);
+
+  useEffect(() => {
+    if (loading || !user || !activePairId || typeof window === 'undefined') return;
+    const onboardingDone = window.localStorage.getItem('mymaps_onboarding_done');
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
+  }, [loading, user, activePairId]);
+
+  const completeOnboarding = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('mymaps_onboarding_done', 'true');
+    }
+    setShowOnboarding(false);
+  }, []);
 
   const handleAddRestaurant = useCallback(
     async (place: { placeId?: string; name: string; address?: string; lat?: number; lng?: number; photoUrl?: string; photoReference?: string }): Promise<void> => {
@@ -118,6 +135,8 @@ export default function AppPage() {
           </div>
         </div>
       )}
+
+      <OnboardingModal isOpen={showOnboarding} onDone={completeOnboarding} />
     </div>
   );
 }

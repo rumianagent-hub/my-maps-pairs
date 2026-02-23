@@ -15,6 +15,12 @@ export default function LoginPage() {
   useEffect(() => {
     if (loading) return;
     if (user) {
+      const postLoginRedirect = typeof window !== 'undefined' ? window.sessionStorage.getItem('post_login_redirect') : null;
+      if (postLoginRedirect) {
+        window.sessionStorage.removeItem('post_login_redirect');
+        router.replace(postLoginRedirect);
+        return;
+      }
       router.replace(activePairId ? '/app' : '/pair');
     }
   }, [user, loading, activePairId, router]);
