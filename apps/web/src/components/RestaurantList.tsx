@@ -43,16 +43,6 @@ export default function RestaurantList({
     );
   }, []);
 
-  if (restaurants.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-5xl mb-4">🍴</div>
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No restaurants yet</h2>
-        <p className="text-[var(--text-secondary)] text-sm">Tap the + button to add your first restaurant.</p>
-      </div>
-    );
-  }
-
   const getUserVote = (restaurantId: string): VoteType | null => {
     const vote = votes.find((v) => v.restaurantId === restaurantId && v.userId === userId);
     return vote?.voteType ?? null;
@@ -93,6 +83,16 @@ export default function RestaurantList({
       }),
     [sorted, userPosition]
   );
+
+  if (restaurants.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="text-5xl mb-4">🍴</div>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No restaurants yet</h2>
+        <p className="text-[var(--text-secondary)] text-sm">Tap the + button to add your first restaurant.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
