@@ -46,8 +46,8 @@ export default function DecideCard({
       {/* Summary */}
       <div className="card text-center">
         <div className="text-4xl mb-3">🎯</div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Decide For Us</h2>
-        <p className="text-gray-500 text-sm">
+        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">Decide For Us</h2>
+        <p className="text-[var(--text-secondary)] text-sm">
           {hasMutuals
             ? `${mutuals.length} mutual match${mutuals.length !== 1 ? 'es' : ''} — let fate pick from them.`
             : 'No mutual matches yet. Both of you need to vote on some restaurants first.'}
@@ -58,21 +58,21 @@ export default function DecideCard({
       {(loading || animating) && (
         <div className="card flex flex-col items-center py-10 gap-4">
           <div className="text-5xl animate-bounce">🎲</div>
-          <p className="text-gray-500 font-medium">Spinning the wheel…</p>
+          <p className="text-[var(--text-secondary)] font-medium">Spinning the wheel…</p>
         </div>
       )}
 
       {decided && !loading && (
-        <div className="card border-2 border-primary-400 bg-primary-50 text-center py-8">
+        <div className="card border-2 border-[var(--accent)] bg-[var(--accent)]/5 text-center py-8">
           <div className="text-5xl mb-4">🏆</div>
-          <p className="text-sm text-primary-600 font-semibold uppercase tracking-wide mb-2">
+          <p className="text-sm text-[var(--accent-light)] font-semibold uppercase tracking-wide mb-2">
             Tonight you're going to…
           </p>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">
+          <h3 className="text-2xl font-bold text-[var(--text-primary)] mb-1">
             {decided.name}
           </h3>
           {decided.address && (
-            <p className="text-gray-500 text-sm">{decided.address}</p>
+            <p className="text-[var(--text-secondary)] text-sm">{decided.address}</p>
           )}
 
           {decided.lat && decided.lng && (
@@ -80,7 +80,7 @@ export default function DecideCard({
               href={`https://maps.google.com/?q=${decided.lat},${decided.lng}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block mt-4 text-primary-600 text-sm font-medium underline"
+              className="inline-block mt-4 text-[var(--accent-light)] text-sm font-medium underline"
             >
               📍 Open in Google Maps
             </a>
@@ -115,7 +115,7 @@ export default function DecideCard({
       {/* Mutual list preview */}
       {hasMutuals && (
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
             Pool of mutual matches ({mutuals.length}):
           </h3>
           <div className="space-y-2">
@@ -123,8 +123,8 @@ export default function DecideCard({
               const r = restaurants.find((x) => x.id === id);
               if (!r) return null;
               return (
-                <div key={id} className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="text-primary-500">❤️</span>
+                <div key={id} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                  <span className="text-[var(--accent-light)]">❤️</span>
                   <span>{r.name}</span>
                 </div>
               );

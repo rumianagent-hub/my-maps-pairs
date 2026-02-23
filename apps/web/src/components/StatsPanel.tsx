@@ -20,18 +20,18 @@ function StatCard({ icon, value, label, highlight }: StatCardProps) {
   return (
     <div
       className={`card text-center ${
-        highlight ? 'border-primary-300 bg-primary-50' : ''
+        highlight ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5' : ''
       }`}
     >
       <div className="text-3xl mb-1">{icon}</div>
       <div
         className={`text-3xl font-bold mb-1 ${
-          highlight ? 'text-primary-600' : 'text-gray-900'
+          highlight ? 'text-[var(--accent-light)]' : 'text-[var(--text-primary)]'
         }`}
       >
         {value}
       </div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-[var(--text-secondary)]">{label}</div>
     </div>
   );
 }
@@ -74,8 +74,8 @@ export default function StatsPanel({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="text-5xl mb-4">📊</div>
-        <h2 className="text-lg font-semibold text-gray-700 mb-2">No data yet</h2>
-        <p className="text-gray-400 text-sm">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No data yet</h2>
+        <p className="text-[var(--text-secondary)] text-sm">
           Add restaurants and vote to see your stats.
         </p>
       </div>
@@ -84,7 +84,7 @@ export default function StatsPanel({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold text-gray-900">Your Stats</h2>
+      <h2 className="text-lg font-bold text-[var(--text-primary)]">Your Stats</h2>
 
       {/* Main grid */}
       <div className="grid grid-cols-2 gap-3">
@@ -113,18 +113,18 @@ export default function StatsPanel({
 
       {/* Your voting breakdown */}
       <div className="card">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
           Your Votes Breakdown
         </h3>
         <div className="space-y-2">
           {[
-            { emoji: '😍', label: 'Love', count: myLoves, color: 'bg-red-400' },
-            { emoji: '👍', label: 'Like', count: myLikes, color: 'bg-green-400' },
-            { emoji: '👎', label: 'Dislike', count: myDislikes, color: 'bg-gray-300' },
+            { emoji: '😍', label: 'Love', count: myLoves, color: 'bg-red-500' },
+            { emoji: '👍', label: 'Like', count: myLikes, color: 'bg-green-500' },
+            { emoji: '👎', label: 'Dislike', count: myDislikes, color: 'bg-gray-500' },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-3">
               <span className="text-lg w-8">{item.emoji}</span>
-              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                 <div
                   className={`h-full ${item.color} rounded-full transition-all`}
                   style={{
@@ -135,13 +135,13 @@ export default function StatsPanel({
                   }}
                 />
               </div>
-              <span className="text-sm text-gray-600 w-8 text-right">
+              <span className="text-sm text-[var(--text-secondary)] w-8 text-right">
                 {item.count}
               </span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-400 mt-3">
+        <p className="text-xs text-[var(--text-secondary)] mt-3">
           Partner has voted on {partnerTotal} restaurant
           {partnerTotal !== 1 ? 's' : ''}.
         </p>
@@ -149,17 +149,17 @@ export default function StatsPanel({
 
       {/* Top pick */}
       {topRestaurant && (
-        <div className="card border-yellow-300 bg-yellow-50">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+        <div className="card border-yellow-500/30 bg-yellow-500/5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">
             ⭐ Most Loved
           </h3>
-          <p className="font-bold text-gray-900">{topRestaurant.name}</p>
+          <p className="font-bold text-[var(--text-primary)]">{topRestaurant.name}</p>
           {topRestaurant.address && (
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
               {topRestaurant.address}
             </p>
           )}
-          <p className="text-xs text-yellow-600 mt-1">
+          <p className="text-xs text-yellow-400 mt-1">
             {loveCounts[topRestaurant.id]} love vote
             {loveCounts[topRestaurant.id] !== 1 ? 's' : ''} between you both
           </p>

@@ -54,8 +54,8 @@ export default function VoteButtons({
             className={clsx(
               'flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all',
               isActive
-                ? 'bg-primary-100 text-primary-700 ring-2 ring-primary-400 scale-105'
-                : 'bg-gray-100 text-gray-600 active:scale-95',
+                ? 'bg-[var(--accent)]/20 text-[var(--accent-light)] ring-2 ring-[var(--accent)]/50 scale-105'
+                : 'bg-white/5 text-[var(--text-primary)] hover:bg-white/10 active:scale-95',
               casting && !isLoading && 'opacity-50'
             )}
           >

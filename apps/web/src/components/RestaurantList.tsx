@@ -61,7 +61,7 @@ export default function RestaurantList({
   return (
     <div className="space-y-3">
       {mutuals.length > 0 && (
-        <div className="text-xs font-semibold text-primary-600 uppercase tracking-wide px-1">
+        <div className="text-xs font-semibold text-[var(--accent-light)] uppercase tracking-wide px-1">
           ❤️ {mutuals.length} mutual match{mutuals.length !== 1 ? 'es' : ''}
         </div>
       )}
@@ -74,18 +74,18 @@ export default function RestaurantList({
         return (
           <div
             key={restaurant.id}
-            className={`card ${isMutual ? 'border-primary-300 bg-primary-50' : ''}`}
+            className={`card card-hover ${isMutual ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5' : ''}`}
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 truncate">
+                  <h3 className="font-semibold text-[var(--text-primary)] truncate">
                     {restaurant.name}
                   </h3>
                   {isMutual && <MutualBadge />}
                 </div>
                 {restaurant.address && (
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
                     {restaurant.address}
                   </p>
                 )}
@@ -102,7 +102,7 @@ export default function RestaurantList({
 
               {/* Partner vote indicator */}
               {partnerVote && (
-                <div className="text-sm text-gray-400 flex items-center gap-1">
+                <div className="text-sm text-[var(--text-secondary)] flex items-center gap-1">
                   <span>Partner:</span>
                   <span>
                     {partnerVote === 'love'
