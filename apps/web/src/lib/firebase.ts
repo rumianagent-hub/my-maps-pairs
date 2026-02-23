@@ -22,10 +22,20 @@ export interface VoteData {
   updatedAt: string;
 }
 
+export interface PairMemberData {
+  uid: string;
+  displayName: string;
+  photoURL?: string;
+  email?: string;
+}
+
 export interface PairSummaryResponse {
   restaurants: RestaurantData[];
   votes: VoteData[];
   mutuals: string[];
+  inviteCode: string;
+  ownerId: string;
+  members: PairMemberData[];
 }
 
 // Lazy-load all Firebase modules to prevent server-side execution.
@@ -92,6 +102,18 @@ export async function joinPairFn(data: { inviteCode: string }): Promise<{ data: 
   await ensureInitialized();
   const { httpsCallable } = await import('firebase/functions');
   return httpsCallable(_functions, 'joinPair')(data) as any;
+}
+
+export async function leavePairFn(): Promise<{ data: { ok: boolean } }> {
+  await ensureInitialized();
+  const { httpsCallable } = await import('firebase/functions');
+  return httpsCallable(_functions, 'leavePair')({}) as any;
+}
+
+export async function deletePairFn(): Promise<{ data: { ok: boolean } }> {
+  await ensureInitialized();
+  const { httpsCallable } = await import('firebase/functions');
+  return httpsCallable(_functions, 'deletePair')({}) as any;
 }
 
 export async function addRestaurantFn(data: any): Promise<{ data: { restaurantId: string } }> {

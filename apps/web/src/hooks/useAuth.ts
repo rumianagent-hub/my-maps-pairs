@@ -11,7 +11,8 @@ export function useAuth() {
   const [activePairId, setActivePairId] = useState<string | null>(null);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
+    let unsubscribeAuth: (() => void) | null = null;
+    let unsubscribeUserDoc: (() => void) | null = null;
 
     (async () => {
       const auth = await getAuth();
@@ -19,9 +20,12 @@ export function useAuth() {
       if (!auth || !db) return;
 
       const { onAuthStateChanged } = await import('firebase/auth');
-      const { doc, getDoc, setDoc, serverTimestamp } = await import('firebase/firestore');
+      const { doc, getDoc, setDoc, serverTimestamp, onSnapshot } = await import('firebase/firestore');
 
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+        unsubscribeUserDoc?.();
+        unsubscribeUserDoc = null;
+
         setUser(firebaseUser);
 
         if (firebaseUser) {
@@ -42,6 +46,11 @@ export function useAuth() {
             setActivePairId(null);
             await logEvent(firebaseUser.uid, null, 'user_created', {});
           }
+
+          unsubscribeUserDoc = onSnapshot(userRef, (docSnap) => {
+            const data = docSnap.data();
+            setActivePairId((data?.activePairId as string | null) ?? null);
+          });
         } else {
           setActivePairId(null);
         }
@@ -50,7 +59,10 @@ export function useAuth() {
       });
     })();
 
-    return () => { unsubscribe?.(); };
+    return () => {
+      unsubscribeAuth?.();
+      unsubscribeUserDoc?.();
+    };
   }, []);
 
   const signInWithGoogle = async (): Promise<void> => {

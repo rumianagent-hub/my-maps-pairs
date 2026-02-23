@@ -45,6 +45,7 @@ export const createPair = onCall(async (request) => {
   const batch = db.batch();
 
   batch.set(pairRef, {
+    ownerId: uid,
     members: [uid],
     inviteCode,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),

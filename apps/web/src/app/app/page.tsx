@@ -10,6 +10,7 @@ import RestaurantSearch from '@/components/RestaurantSearch';
 import MapView from '@/components/MapView';
 import DecideCard from '@/components/DecideCard';
 import StatsPanel from '@/components/StatsPanel';
+import SessionManager from '@/components/SessionManager';
 import { addRestaurantFn } from '@/lib/firebase';
 import { logEvent } from '@/lib/analytics';
 
@@ -18,10 +19,11 @@ const TABS: { id: AppTab; label: string; icon: string }[] = [
   { id: 'map', label: 'Map', icon: '🗺️' },
   { id: 'decide', label: 'Decide', icon: '🎯' },
   { id: 'stats', label: 'Stats', icon: '📊' },
+  { id: 'session', label: 'Session', icon: '👥' },
 ];
 
 export default function AppPage() {
-  const { user, loading, activePairId, signOut } = useAuth();
+  const { user, loading, activePairId, signOut, refreshActivePairId } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AppTab>('list');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -29,12 +31,19 @@ export default function AppPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) { router.replace('/login'); return; }
-    if (!activePairId) { router.replace('/pair'); }
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (!activePairId) {
+      router.replace('/pair');
+    }
   }, [user, loading, activePairId, router]);
 
   useEffect(() => {
-    if (activePairId) { refresh(); }
+    if (activePairId) {
+      refresh();
+    }
   }, [activePairId, refresh]);
 
   const handleAddRestaurant = useCallback(
@@ -59,6 +68,11 @@ export default function AppPage() {
     router.replace('/login');
   };
 
+  const handleSessionChanged = async (): Promise<void> => {
+    await refreshActivePairId();
+    router.replace('/pair');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -78,11 +92,7 @@ export default function AppPage() {
         <div className="flex items-center gap-2">
           {user?.photoURL && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.photoURL}
-              alt={user.displayName ?? 'User'}
-              className="w-8 h-8 rounded-full"
-            />
+            <img src={user.photoURL} alt={user.displayName ?? 'User'} className="w-8 h-8 rounded-full" />
           )}
           <button
             onClick={handleSignOut}
@@ -121,10 +131,7 @@ export default function AppPage() {
         )}
 
         {activeTab === 'map' && (
-          <MapView
-            restaurants={summary?.restaurants ?? []}
-            mutuals={summary?.mutuals ?? []}
-          />
+          <MapView restaurants={summary?.restaurants ?? []} mutuals={summary?.mutuals ?? []} />
         )}
 
         {activeTab === 'decide' && (
@@ -147,6 +154,19 @@ export default function AppPage() {
             />
           </div>
         )}
+
+        {activeTab === 'session' && summary && (
+          <div className="px-4 py-4">
+            <SessionManager
+              pairId={activePairId ?? ''}
+              inviteCode={summary.inviteCode}
+              members={summary.members}
+              ownerId={summary.ownerId}
+              currentUserId={user?.uid ?? ''}
+              onSessionChanged={handleSessionChanged}
+            />
+          </div>
+        )}
       </main>
 
       {/* FAB – add restaurant */}
@@ -166,9 +186,7 @@ export default function AppPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'text-primary-600'
-                : 'text-gray-400 active:text-gray-600'
+              activeTab === tab.id ? 'text-primary-600' : 'text-gray-400 active:text-gray-600'
             }`}
           >
             <span className="text-xl">{tab.icon}</span>
@@ -179,20 +197,14 @@ export default function AppPage() {
 
       {/* Add restaurant modal */}
       {showAddModal && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 flex items-end"
-          onClick={() => setShowAddModal(false)}
-        >
+        <div className="fixed inset-0 bg-black/50 z-30 flex items-end" onClick={() => setShowAddModal(false)}>
           <div
             className="bg-white w-full max-w-[480px] mx-auto rounded-t-3xl p-6 max-h-[85vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">Add a Restaurant</h2>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-gray-400 text-2xl leading-none"
-              >
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 text-2xl leading-none">
                 ×
               </button>
             </div>

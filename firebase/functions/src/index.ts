@@ -9,6 +9,8 @@ export { addRestaurant } from './addRestaurant';
 export { castVote } from './castVote';
 export { getPairSummary } from './getPairSummary';
 export { decideForUs } from './decideForUs';
+export { leavePair } from './leavePair';
+export { deletePair } from './deletePair';
 
 // Suppress unused import warnings
 void functions.config;

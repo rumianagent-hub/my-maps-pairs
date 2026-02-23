@@ -70,7 +70,7 @@ export default function PairPage() {
 
   const handleCopyLink = async (): Promise<void> => {
     if (!createdPair) return;
-    const link = `${getAppBaseUrl()}/pair?code=${createdPair.inviteCode}`;
+    const link = `${getAppBaseUrl()}/join?code=${createdPair.inviteCode}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -148,7 +148,7 @@ export default function PairPage() {
               Share this link with your partner:
             </p>
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 break-all mb-3">
-              {getAppBaseUrl()}/pair?code={createdPair.inviteCode}
+              {getAppBaseUrl()}/join?code={createdPair.inviteCode}
             </div>
             <button
               className="btn-primary"

@@ -45,4 +45,4 @@ export interface PlaceResult {
   lng: number;
 }
 
-export type AppTab = 'list' | 'map' | 'decide' | 'stats';
+export type AppTab = 'list' | 'map' | 'decide' | 'stats' | 'session';

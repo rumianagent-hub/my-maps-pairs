@@ -12,10 +12,10 @@ interface VoteEntry {
 }
 
 /**
- * getPairSummary({ pairId }) -> { restaurants, votes, mutuals }
+ * getPairSummary({ pairId }) -> { restaurants, votes, mutuals, inviteCode, ownerId, members }
  *
- * Returns all restaurants, all votes, and computed mutual matches for the pair.
- * Mutuals: both members voted 'like' or 'love' on the same restaurant.
+ * Returns all restaurants, all votes, computed mutual matches,
+ * and member profile metadata for the pair.
  */
 export const getPairSummary = onCall<GetPairSummaryData>(async (request) => {
   const uid = requireAuth(request);
@@ -26,7 +26,8 @@ export const getPairSummary = onCall<GetPairSummaryData>(async (request) => {
   }
 
   const pair = await requirePairMember(uid, pairId);
-  const members = pair.members as string[];
+  const members = (pair.members as string[]) ?? [];
+  const ownerId = (pair.ownerId as string) || members[0] || '';
 
   // Parallel fetch restaurants and votes
   const [restaurantsSnap, votesSnap] = await Promise.all([
@@ -64,7 +65,27 @@ export const getPairSummary = onCall<GetPairSummaryData>(async (request) => {
     members
   );
 
-  return { restaurants, votes, mutuals };
+  const memberDocs = await Promise.all(
+    members.map(async (memberId) => {
+      const userSnap = await db.collection('users').doc(memberId).get();
+      const user = userSnap.exists ? userSnap.data() ?? {} : {};
+      return {
+        uid: memberId,
+        displayName: (user.displayName as string) || 'Member',
+        photoURL: (user.photoURL as string) || '',
+        email: (user.email as string) || '',
+      };
+    })
+  );
+
+  return {
+    restaurants,
+    votes,
+    mutuals,
+    inviteCode: (pair.inviteCode as string) || '',
+    ownerId,
+    members: memberDocs,
+  };
 });
 
 /** Find restaurant IDs where all pair members voted like or love */
