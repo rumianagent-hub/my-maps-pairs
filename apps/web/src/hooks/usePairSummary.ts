@@ -54,7 +54,7 @@ function computeMutuals(restaurantIds: string[], votes: VoteData[], members: str
   );
 }
 
-export function usePairSummary(pairId: string | null): UsePairSummaryResult {
+export function usePairSummary(pairId: string | null, userId: string | null): UsePairSummaryResult {
   const [summary, setSummary] = useState<PairSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +66,9 @@ export function usePairSummary(pairId: string | null): UsePairSummaryResult {
     let unsubVotes: (() => void) | null = null;
     const memberUnsubs: Array<() => void> = [];
 
-    if (!pairId) {
+    if (!userId || !pairId) {
       setSummary(null);
+      setLoading(false);
       return;
     }
 
@@ -186,7 +187,7 @@ export function usePairSummary(pairId: string | null): UsePairSummaryResult {
       unsubVotes?.();
       memberUnsubs.forEach((u) => u());
     };
-  }, [pairId]);
+  }, [pairId, userId]);
 
   const refresh = useMemo(() => async () => {}, []);
 

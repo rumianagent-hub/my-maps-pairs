@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+import { loadMapsApi } from '@/lib/maps';
 
 interface ExplorePlace {
   placeId?: string;
@@ -54,48 +54,50 @@ export default function ExploreTab({ onAddRestaurant }: ExploreTabProps) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           try {
-            const loader = new Loader({ apiKey, version: 'weekly', libraries: ['places'] });
-            await loader.load();
+            await loadMapsApi();
             if (cancelled || typeof window === 'undefined' || !(window as any).google) return;
 
             const googleAny = (window as any).google;
             const center = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            const mapHolder = document.createElement('div');
-            const map = new googleAny.maps.Map(mapHolder);
-            const service = new googleAny.maps.places.PlacesService(map);
 
-            service.nearbySearch(
-              { location: center, radius: 4000, type: 'restaurant' },
-              (results: any[], status: string) => {
-                if (cancelled) return;
-                if (status !== googleAny.maps.places.PlacesServiceStatus.OK || !results?.length) {
-                  setError('No nearby restaurants found right now.');
-                  setLoading(false);
-                  return;
-                }
+            const response = await googleAny.maps.places.Place.searchNearby({
+              fields: ['id', 'displayName', 'location', 'businessStatus', 'rating', 'types', 'photos', 'formattedAddress'],
+              locationRestriction: {
+                center,
+                radius: 4000,
+              },
+              includedTypes: ['restaurant'],
+              maxResultCount: 20,
+            });
 
-                const mapped = results
-                  .map((r: any) => {
-                    const lat = r.geometry?.location?.lat?.();
-                    const lng = r.geometry?.location?.lng?.();
-                    return {
-                      placeId: r.place_id,
-                      name: r.name,
-                      address: r.vicinity,
-                      lat,
-                      lng,
-                      rating: r.rating,
-                      types: r.types,
-                      photoUrl: r.photos?.[0]?.getUrl?.({ maxWidth: 480, maxHeight: 260 }),
-                      distanceKm: lat && lng ? distanceKm(center.lat, center.lng, lat, lng) : undefined,
-                    } as ExplorePlace;
-                  })
-                  .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+            const nearbyPlaces = response?.places ?? [];
+            if (!nearbyPlaces.length) {
+              setError('No nearby restaurants found right now.');
+              setLoading(false);
+              return;
+            }
 
-                setPlaces(mapped);
-                setLoading(false);
-              }
-            );
+            const mapped = nearbyPlaces
+              .map((r: any) => {
+                const lat = r.location?.lat?.();
+                const lng = r.location?.lng?.();
+
+                return {
+                  placeId: r.id,
+                  name: r.displayName ?? 'Restaurant',
+                  address: r.formattedAddress,
+                  lat,
+                  lng,
+                  rating: r.rating,
+                  types: r.types,
+                  photoUrl: r.photos?.[0]?.getURI?.({ maxWidth: 480, maxHeight: 260 }),
+                  distanceKm: lat && lng ? distanceKm(center.lat, center.lng, lat, lng) : undefined,
+                } as ExplorePlace;
+              })
+              .sort((a: ExplorePlace, b: ExplorePlace) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+
+            setPlaces(mapped);
+            setLoading(false);
           } catch (e: any) {
             if (!cancelled) {
               setError(e?.message || 'Failed to load nearby places.');

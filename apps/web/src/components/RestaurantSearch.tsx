@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+import { loadMapsApi } from '@/lib/maps';
 
 interface PlaceResult {
   placeId?: string;
@@ -25,8 +25,6 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
   const [saving, setSaving] = useState(false);
   const [mapsReady, setMapsReady] = useState(false);
   const autocompleteService = useRef<any>(null);
-  const placesService = useRef<any>(null);
-  const mapDivRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,25 +34,19 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
       return;
     }
 
-    const loader = new Loader({ apiKey, version: 'weekly', libraries: ['places'] });
+    loadMapsApi()
+      .then(() => {
+        if (cancelled || typeof window === 'undefined' || !(window as any).google) return;
+        const googleAny = (window as any).google;
+        autocompleteService.current = new googleAny.maps.places.AutocompleteService();
+        setMapsReady(true);
+      })
+      .catch(() => setManualMode(true));
 
-    loader.load().then(() => {
-      if (cancelled || typeof window === 'undefined' || !(window as any).google) return;
-      const googleAny = (window as any).google;
-      autocompleteService.current = new googleAny.maps.places.AutocompleteService();
-      setMapsReady(true);
-    }).catch(() => setManualMode(true));
-
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    if (!mapsReady || !mapDivRef.current || placesService.current || typeof window === 'undefined') return;
-    const googleAny = (window as any).google;
-    if (!googleAny?.maps) return;
-    const map = new googleAny.maps.Map(mapDivRef.current);
-    placesService.current = new googleAny.maps.places.PlacesService(map);
-  }, [mapsReady]);
 
   const searchPlaces = useCallback(async (input: string): Promise<void> => {
     if (!input.trim() || !autocompleteService.current || typeof window === 'undefined') return;
@@ -73,7 +65,13 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
         );
       });
 
-      setSuggestions(predictions.map((p) => ({ placeId: p.place_id, name: p.structured_formatting.main_text, address: p.structured_formatting.secondary_text })));
+      setSuggestions(
+        predictions.map((p) => ({
+          placeId: p.place_id,
+          name: p.structured_formatting.main_text,
+          address: p.structured_formatting.secondary_text,
+        }))
+      );
     } catch {
       setSuggestions([]);
     } finally {
@@ -81,36 +79,67 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
     }
   }, []);
 
-  const fetchPlaceDetails = (placeId: string): Promise<PlaceResult> => new Promise((resolve, reject) => {
-    if (!placesService.current || typeof window === 'undefined') {
-      reject(new Error('PlacesService not ready'));
-      return;
+  const fetchPlaceDetails = async (placeId: string): Promise<PlaceResult> => {
+    if (typeof window === 'undefined' || !(window as any).google) {
+      throw new Error('Google Maps not ready');
     }
+
     const googleAny = (window as any).google;
-    placesService.current.getDetails(
-      { placeId, fields: ['place_id', 'name', 'formatted_address', 'geometry'] },
-      (result: any, status: string) => {
-        if (status === googleAny.maps.places.PlacesServiceStatus.OK && result) {
-          resolve({ placeId: result.place_id, name: result.name ?? '', address: result.formatted_address, lat: result.geometry?.location?.lat?.(), lng: result.geometry?.location?.lng?.() });
-        } else reject(new Error(status));
-      }
-    );
-  });
+    const place = new googleAny.maps.places.Place({ id: placeId });
+    await place.fetchFields({ fields: ['id', 'displayName', 'formattedAddress', 'location'] });
+
+    return {
+      placeId: place.id,
+      name: place.displayName ?? '',
+      address: place.formattedAddress,
+      lat: place.location?.lat?.(),
+      lng: place.location?.lng?.(),
+    };
+  };
 
   return (
     <div className="space-y-4">
-      <div ref={mapDivRef} style={{ display: 'none' }} />
       {!manualMode ? (
         <>
           <div className="relative">
-            <input type="text" className="input-field pr-10" placeholder="Search restaurants…" value={query} onChange={(e) => { const val = e.target.value; setQuery(val); if (val.length > 2) searchPlaces(val); else setSuggestions([]); }} autoFocus />
-            {loading && <div className="absolute right-3 top-1/2 -translate-y-1/2"><div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--accent)] border-t-transparent" /></div>}
+            <input
+              type="text"
+              className="input-field pr-10"
+              placeholder="Search restaurants…"
+              value={query}
+              onChange={(e) => {
+                const val = e.target.value;
+                setQuery(val);
+                if (val.length > 2) searchPlaces(val);
+                else setSuggestions([]);
+              }}
+              autoFocus
+            />
+            {loading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--accent)] border-t-transparent" />
+              </div>
+            )}
           </div>
 
           {suggestions.length > 0 && (
             <div className="card p-0 overflow-hidden divide-y divide-white/10">
               {suggestions.map((s) => (
-                <button key={s.placeId} onClick={async () => { setSaving(true); try { let place = s; if (s.placeId && placesService.current) place = await fetchPlaceDetails(s.placeId); await onSelect(place); } finally { setSaving(false); } }} disabled={saving} className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors">
+                <button
+                  key={s.placeId}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      let place = s;
+                      if (s.placeId && mapsReady) place = await fetchPlaceDetails(s.placeId);
+                      await onSelect(place);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                  className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors"
+                >
                   <p className="font-medium text-sm">{s.name}</p>
                   {s.address && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{s.address}</p>}
                 </button>
@@ -118,16 +147,53 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
             </div>
           )}
 
-          <div className="text-center"><button onClick={() => setManualMode(true)} className="text-sm text-[var(--accent-light)] underline">Can't find it? Enter manually</button></div>
+          <div className="text-center">
+            <button onClick={() => setManualMode(true)} className="text-sm text-[var(--accent-light)] underline">
+              Can't find it? Enter manually
+            </button>
+          </div>
         </>
       ) : (
         <>
           <div className="space-y-3">
-            <input type="text" className="input-field" placeholder="Restaurant name *" value={manualName} onChange={(e) => setManualName(e.target.value)} autoFocus />
-            <input type="text" className="input-field" placeholder="Address (optional)" value={manualAddress} onChange={(e) => setManualAddress(e.target.value)} />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Restaurant name *"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              autoFocus
+            />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Address (optional)"
+              value={manualAddress}
+              onChange={(e) => setManualAddress(e.target.value)}
+            />
           </div>
-          <button className="btn-primary" onClick={async () => { if (!manualName.trim()) return; setSaving(true); try { await onSelect({ name: manualName.trim(), address: manualAddress.trim() || undefined }); } finally { setSaving(false); } }} disabled={saving || !manualName.trim()}>{saving ? 'Adding…' : '+ Add Restaurant'}</button>
-          {mapsReady && <div className="text-center"><button onClick={() => setManualMode(false)} className="text-sm text-[var(--accent-light)] underline">← Back to search</button></div>}
+          <button
+            className="btn-primary"
+            onClick={async () => {
+              if (!manualName.trim()) return;
+              setSaving(true);
+              try {
+                await onSelect({ name: manualName.trim(), address: manualAddress.trim() || undefined });
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving || !manualName.trim()}
+          >
+            {saving ? 'Adding…' : '+ Add Restaurant'}
+          </button>
+          {mapsReady && (
+            <div className="text-center">
+              <button onClick={() => setManualMode(false)} className="text-sm text-[var(--accent-light)] underline">
+                ← Back to search
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

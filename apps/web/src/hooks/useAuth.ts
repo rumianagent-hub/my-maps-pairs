@@ -47,10 +47,17 @@ export function useAuth() {
             await logEvent(firebaseUser.uid, null, 'user_created', {});
           }
 
-          unsubscribeUserDoc = onSnapshot(userRef, (docSnap) => {
-            const data = docSnap.data();
-            setActivePairId((data?.activePairId as string | null) ?? null);
-          });
+          unsubscribeUserDoc = onSnapshot(
+            userRef,
+            (docSnap) => {
+              const data = docSnap.data();
+              setActivePairId((data?.activePairId as string | null) ?? null);
+            },
+            () => {
+              // Keep auth session stable even if user doc listener temporarily fails.
+              setActivePairId(null);
+            }
+          );
         } else {
           setActivePairId(null);
         }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
 import { RestaurantData } from '@/lib/firebase';
+import { loadMapsApi } from '@/lib/maps';
 
 interface MapViewProps {
   restaurants: RestaurantData[];
@@ -34,9 +34,7 @@ export default function MapView({ restaurants, mutuals }: MapViewProps) {
       return;
     }
 
-    const loader = new Loader({ apiKey, version: 'weekly' });
-    loader
-      .load()
+    loadMapsApi()
       .then(() => {
         if (!cancelled && typeof window !== 'undefined' && (window as any).google) {
           setMapsReady(true);

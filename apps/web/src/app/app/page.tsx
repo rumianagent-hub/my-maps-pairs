@@ -29,7 +29,7 @@ export default function AppPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AppTab>('list');
   const [showAddModal, setShowAddModal] = useState(false);
-  const { summary, loading: summaryLoading, error, refresh } = usePairSummary(activePairId);
+  const { summary, loading: summaryLoading, error, refresh } = usePairSummary(activePairId, user?.uid ?? null);
 
   useEffect(() => {
     if (loading) return;
