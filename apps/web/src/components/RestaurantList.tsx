@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { Restaurant, Vote, VoteType } from '@/types';
 import VoteButtons from './VoteButtons';
 import MutualBadge from './MutualBadge';
@@ -13,6 +14,15 @@ interface RestaurantListProps {
   onVote: () => Promise<void>;
 }
 
+const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number): number => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const sa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(sa), Math.sqrt(1 - sa));
+};
+
 export default function RestaurantList({
   restaurants,
   votes,
@@ -21,35 +31,38 @@ export default function RestaurantList({
   pairId,
   onVote,
 }: RestaurantListProps) {
+  const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, []);
+
   if (restaurants.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="text-5xl mb-4">🍴</div>
-        <h2 className="text-lg font-semibold text-gray-700 mb-2">
-          No restaurants yet
-        </h2>
-        <p className="text-gray-400 text-sm">
-          Tap the + button to add your first restaurant.
-        </p>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No restaurants yet</h2>
+        <p className="text-[var(--text-secondary)] text-sm">Tap the + button to add your first restaurant.</p>
       </div>
     );
   }
 
   const getUserVote = (restaurantId: string): VoteType | null => {
-    const vote = votes.find(
-      (v) => v.restaurantId === restaurantId && v.userId === userId
-    );
+    const vote = votes.find((v) => v.restaurantId === restaurantId && v.userId === userId);
     return vote?.voteType ?? null;
   };
 
   const getPartnerVote = (restaurantId: string): VoteType | null => {
-    const vote = votes.find(
-      (v) => v.restaurantId === restaurantId && v.userId !== userId
-    );
+    const vote = votes.find((v) => v.restaurantId === restaurantId && v.userId !== userId);
     return vote?.voteType ?? null;
   };
 
-  // Sort: mutuals first, then by createdAt desc
   const sorted = [...restaurants].sort((a, b) => {
     const aIsMutual = mutuals.includes(a.id);
     const bIsMutual = mutuals.includes(b.id);
@@ -57,6 +70,29 @@ export default function RestaurantList({
     if (!aIsMutual && bIsMutual) return 1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  const rows = useMemo(
+    () =>
+      sorted.map((restaurant) => {
+        const anyRestaurant = restaurant as any;
+        const typeLabel = (anyRestaurant.types?.[0] || 'Restaurant').replaceAll('_', ' ');
+        const rating = anyRestaurant.rating;
+        const photoUrl = anyRestaurant.photoUrl || anyRestaurant.photoURL;
+        const distance =
+          userPosition && restaurant.lat !== undefined && restaurant.lng !== undefined
+            ? distanceKm(userPosition.lat, userPosition.lng, restaurant.lat, restaurant.lng)
+            : undefined;
+
+        return {
+          restaurant,
+          typeLabel,
+          rating,
+          photoUrl,
+          distance,
+        };
+      }),
+    [sorted, userPosition]
+  );
 
   return (
     <div className="space-y-3">
@@ -66,7 +102,7 @@ export default function RestaurantList({
         </div>
       )}
 
-      {sorted.map((restaurant) => {
+      {rows.map(({ restaurant, typeLabel, rating, photoUrl, distance }) => {
         const isMutual = mutuals.includes(restaurant.id);
         const myVote = getUserVote(restaurant.id);
         const partnerVote = getPartnerVote(restaurant.id);
@@ -74,43 +110,35 @@ export default function RestaurantList({
         return (
           <div
             key={restaurant.id}
-            className={`card card-hover ${isMutual ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5' : ''}`}
+            className={`card card-hover overflow-hidden animate-fade-in ${isMutual ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5' : ''}`}
           >
-            <div className="flex items-start justify-between mb-3">
+            {photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photoUrl} alt={restaurant.name} className="w-full h-32 object-cover rounded-xl mb-3" />
+            ) : (
+              <div className="w-full h-32 rounded-xl mb-3 bg-gradient-to-br from-[var(--bg-elevated)] via-[#222235] to-[var(--bg-secondary)] border border-white/10" />
+            )}
+
+            <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-[var(--text-primary)] truncate">
-                    {restaurant.name}
-                  </h3>
+                  <h3 className="font-semibold text-[var(--text-primary)] truncate">{restaurant.name}</h3>
                   {isMutual && <MutualBadge />}
                 </div>
-                {restaurant.address && (
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
-                    {restaurant.address}
-                  </p>
-                )}
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">{restaurant.address || 'Address unavailable'}</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  {typeLabel} · ⭐ {rating ?? '—'} · {distance?.toFixed(1) ?? '—'} km
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <VoteButtons
-                restaurantId={restaurant.id}
-                pairId={pairId}
-                currentVote={myVote}
-                onVoted={onVote}
-              />
+            <div className="flex items-center justify-between gap-3">
+              <VoteButtons restaurantId={restaurant.id} pairId={pairId} currentVote={myVote} onVoted={onVote} />
 
-              {/* Partner vote indicator */}
               {partnerVote && (
-                <div className="text-sm text-[var(--text-secondary)] flex items-center gap-1">
+                <div className="text-sm text-[var(--text-secondary)] flex items-center gap-1 whitespace-nowrap">
                   <span>Partner:</span>
-                  <span>
-                    {partnerVote === 'love'
-                      ? '😍'
-                      : partnerVote === 'like'
-                      ? '👍'
-                      : '👎'}
-                  </span>
+                  <span>{partnerVote === 'love' ? '😍' : partnerVote === 'like' ? '👍' : '👎'}</span>
                 </div>
               )}
             </div>

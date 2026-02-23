@@ -23,8 +23,11 @@ export default function MapView({ restaurants, mutuals }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const userMarkerRef = useRef<any>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [noKey, setNoKey] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,12 +66,36 @@ export default function MapView({ restaurants, mutuals }: MapViewProps) {
   }, [mapsReady]);
 
   useEffect(() => {
+    if (!mapsReady || !mapInstanceRef.current || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(coords);
+        mapInstanceRef.current.panTo(coords);
+        mapInstanceRef.current.setZoom(14);
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationDenied(true);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    );
+  }, [mapsReady]);
+
+  useEffect(() => {
     if (!mapsReady || !mapInstanceRef.current || typeof window === 'undefined') return;
     const googleAny = (window as any).google;
     if (!googleAny?.maps) return;
 
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setMap(null);
+      userMarkerRef.current = null;
+    }
 
     const bounds = new googleAny.maps.LatLngBounds();
     let hasCoords = false;
@@ -106,8 +133,46 @@ export default function MapView({ restaurants, mutuals }: MapViewProps) {
         hasCoords = true;
       });
 
+    if (userLocation) {
+      userMarkerRef.current = new googleAny.maps.Marker({
+        position: userLocation,
+        map: mapInstanceRef.current,
+        title: 'You are here',
+        icon: {
+          path: googleAny.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#3b82f6',
+          fillOpacity: 1,
+          strokeColor: '#bfdbfe',
+          strokeWeight: 3,
+        },
+        zIndex: 999,
+      });
+
+      bounds.extend(userLocation);
+      hasCoords = true;
+    }
+
     if (hasCoords) mapInstanceRef.current.fitBounds(bounds);
-  }, [restaurants, mutuals, mapsReady]);
+  }, [restaurants, mutuals, mapsReady, userLocation]);
+
+  const recenterToMyLocation = () => {
+    if (!mapInstanceRef.current || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(coords);
+        mapInstanceRef.current.panTo(coords);
+        mapInstanceRef.current.setZoom(15);
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationDenied(true);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
 
   if (noKey) {
     return <div className="p-4 text-sm text-[var(--text-secondary)]">Map unavailable (missing Google Maps API key).</div>;
@@ -118,10 +183,20 @@ export default function MapView({ restaurants, mutuals }: MapViewProps) {
   }
 
   return (
-    <div>
+    <div className="relative">
       <div ref={mapRef} className="w-full" style={{ height: 'calc(100vh - 176px)' }} />
+
+      {!locationDenied && (
+        <button
+          onClick={recenterToMyLocation}
+          className="absolute right-4 bottom-20 z-[5] px-3 py-2 rounded-xl bg-[var(--bg-card)] border border-white/15 text-xs text-[var(--text-primary)] shadow-lg"
+        >
+          📍 My Location
+        </button>
+      )}
+
       <div className="px-4 py-3 bg-[var(--bg-card)] border-t border-white/10 text-xs text-[var(--text-secondary)]">
-        🟣 = mutual match · ⚪ = not yet matched
+        🟣 = mutual match · ⚪ = not yet matched · 🔵 = your location
       </div>
     </div>
   );

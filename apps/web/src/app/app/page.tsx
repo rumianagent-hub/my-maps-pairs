@@ -91,12 +91,23 @@ export default function AppPage() {
         <button onClick={() => setShowAddModal(true)} className="fixed bottom-20 right-4 w-14 h-14 accent-gradient text-white rounded-full glow-md flex items-center justify-center text-2xl z-20 card-hover">+</button>
       )}
 
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[var(--bg-card)] border-t border-white/10 flex z-10 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`min-w-[78px] flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium ${activeTab === tab.id ? 'text-[var(--accent-light)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
-            <span className="text-lg">{tab.icon}</span><span>{tab.label}</span>
-          </button>
-        ))}
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[var(--bg-card)] border-t border-white/10 z-10">
+        <div className="grid grid-cols-6 w-full">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center justify-center py-2 px-1 gap-0.5 text-[10px] font-medium min-w-0 ${
+                activeTab === tab.id
+                  ? 'text-[var(--accent-light)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <span className="text-base leading-none">{tab.icon}</span>
+              <span className="truncate">{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </nav>
 
       {showAddModal && (
