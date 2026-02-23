@@ -1,0 +1,76 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────────────────────
+
+    /** Returns true if the request is from an authenticated user */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Returns true if the requesting user owns the document */
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    /** Returns true if the requesting user is in the pair's members array */
+    function isPairMember(pairId) {
+      return isSignedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members;
+    }
+
+    // ── users collection ─────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSignedIn() && isOwner(uid);
+      allow create: if isSignedIn() && isOwner(uid);
+      allow update: if isSignedIn() && isOwner(uid);
+      // No delete — users can't delete their own profile
+    }
+
+    // ── pairs collection ─────────────────────────────────────────────────────
+    match /pairs/{pairId} {
+      // Members can read their pair
+      allow read: if isSignedIn() &&
+        request.auth.uid in resource.data.members;
+
+      // Only Cloud Functions can create/update pairs (via Admin SDK)
+      // Direct writes from client are blocked intentionally.
+      allow write: if false;
+    }
+
+    // ── restaurants collection ───────────────────────────────────────────────
+    match /restaurants/{restaurantId} {
+      // Any pair member can read restaurants in their pair
+      allow read: if isPairMember(resource.data.pairId);
+
+      // Only Cloud Functions write restaurants
+      allow write: if false;
+    }
+
+    // ── votes collection ─────────────────────────────────────────────────────
+    match /votes/{voteId} {
+      // Pair members can read all votes in their pair
+      allow read: if isPairMember(resource.data.pairId);
+
+      // Only Cloud Functions write votes
+      allow write: if false;
+    }
+
+    // ── events collection ────────────────────────────────────────────────────
+    match /events/{eventId} {
+      // Users can read their own events; pair members can read pair events
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid ||
+         (resource.data.pairId != null && isPairMember(resource.data.pairId)));
+
+      // Analytics events can be written directly from the client (for UX speed)
+      // but only by the authenticated user for their own events
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+  }
+}
