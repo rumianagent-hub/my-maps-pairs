@@ -41,7 +41,7 @@ export default function AppPage() {
   }, [user, loading, activePairId, router]);
 
   const handleAddRestaurant = useCallback(
-    async (place: { placeId?: string; name: string; address?: string; lat?: number; lng?: number }): Promise<void> => {
+    async (place: { placeId?: string; name: string; address?: string; lat?: number; lng?: number; photoUrl?: string; photoReference?: string }): Promise<void> => {
       if (!activePairId || !user) return;
       await addRestaurantFn({ pairId: activePairId, place });
       await logEvent(user.uid, activePairId, 'restaurant_added', { name: place.name, source: activeTab });

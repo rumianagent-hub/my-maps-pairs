@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadMapsApi } from '@/lib/maps';
+import { resolvePhotoUrl } from '@/lib/placePhotos';
 
 interface PlaceResult {
   placeId?: string;
@@ -9,6 +10,7 @@ interface PlaceResult {
   address?: string;
   lat?: number;
   lng?: number;
+  photoUrl?: string;
 }
 
 interface RestaurantSearchProps {
@@ -86,7 +88,9 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
 
     const googleAny = (window as any).google;
     const place = new googleAny.maps.places.Place({ id: placeId });
-    await place.fetchFields({ fields: ['id', 'displayName', 'formattedAddress', 'location'] });
+    await place.fetchFields({ fields: ['id', 'displayName', 'formattedAddress', 'location', 'photos'] });
+
+    const placePhotoUrl = place.photos?.[0]?.getURI?.({ maxWidth: 480, maxHeight: 260 });
 
     return {
       placeId: place.id,
@@ -94,6 +98,7 @@ export default function RestaurantSearch({ onSelect }: RestaurantSearchProps) {
       address: place.formattedAddress,
       lat: place.location?.lat?.(),
       lng: place.location?.lng?.(),
+      photoUrl: resolvePhotoUrl(placePhotoUrl),
     };
   };
 

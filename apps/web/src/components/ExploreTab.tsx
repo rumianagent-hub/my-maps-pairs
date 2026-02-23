@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { loadMapsApi } from '@/lib/maps';
+import { resolvePhotoUrl } from '@/lib/placePhotos';
 
 interface ExplorePlace {
   placeId?: string;
@@ -12,6 +13,7 @@ interface ExplorePlace {
   rating?: number;
   types?: string[];
   photoUrl?: string;
+  photoReference?: string;
   distanceKm?: number;
 }
 
@@ -82,6 +84,9 @@ export default function ExploreTab({ onAddRestaurant }: ExploreTabProps) {
                 const lat = r.location?.lat?.();
                 const lng = r.location?.lng?.();
 
+                const rawPhotoUrl = r.photos?.[0]?.getURI?.({ maxWidth: 480, maxHeight: 260 });
+                const photoReference = r.photos?.[0]?.name;
+
                 return {
                   placeId: r.id,
                   name: r.displayName ?? 'Restaurant',
@@ -90,7 +95,8 @@ export default function ExploreTab({ onAddRestaurant }: ExploreTabProps) {
                   lng,
                   rating: r.rating,
                   types: r.types,
-                  photoUrl: r.photos?.[0]?.getURI?.({ maxWidth: 480, maxHeight: 260 }),
+                  photoReference,
+                  photoUrl: resolvePhotoUrl(rawPhotoUrl) || resolvePhotoUrl(photoReference),
                   distanceKm: lat && lng ? distanceKm(center.lat, center.lng, lat, lng) : undefined,
                 } as ExplorePlace;
               })

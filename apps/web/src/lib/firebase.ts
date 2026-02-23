@@ -9,6 +9,8 @@ export interface RestaurantData {
   address?: string;
   lat?: number;
   lng?: number;
+  photoUrl?: string;
+  photoReference?: string;
   addedBy: string;
   createdAt: string;
 }

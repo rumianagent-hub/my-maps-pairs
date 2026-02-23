@@ -24,6 +24,8 @@ export interface Restaurant {
   address?: string;
   lat?: number;
   lng?: number;
+  photoUrl?: string;
+  photoReference?: string;
   addedBy: string;
   createdAt: string;
 }
@@ -43,6 +45,8 @@ export interface PlaceResult {
   address: string;
   lat: number;
   lng: number;
+  photoUrl?: string;
+  photoReference?: string;
 }
 
 export type AppTab = 'list' | 'explore' | 'map' | 'decide' | 'stats' | 'session';

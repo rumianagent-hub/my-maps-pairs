@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Restaurant, Vote, VoteType } from '@/types';
 import VoteButtons from './VoteButtons';
 import MutualBadge from './MutualBadge';
+import { loadMapsApi } from '@/lib/maps';
+import { resolvePhotoUrl } from '@/lib/placePhotos';
 
 interface RestaurantListProps {
   restaurants: Restaurant[];
@@ -32,6 +34,7 @@ export default function RestaurantList({
   onVote,
 }: RestaurantListProps) {
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [hydratedPhotoUrls, setHydratedPhotoUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -42,6 +45,55 @@ export default function RestaurantList({
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateMissingPhotos = async () => {
+      const missing = restaurants.filter((restaurant) => {
+        const anyRestaurant = restaurant as any;
+        const existingPhoto = resolvePhotoUrl(anyRestaurant.photoUrl || anyRestaurant.photoURL || anyRestaurant.photoReference);
+        return !existingPhoto && !!anyRestaurant.placeId && !hydratedPhotoUrls[restaurant.id];
+      });
+
+      if (!missing.length) return;
+
+      try {
+        await loadMapsApi();
+        if (cancelled || typeof window === 'undefined' || !(window as any).google) return;
+        const googleAny = (window as any).google;
+
+        const updates: Record<string, string> = {};
+
+        await Promise.all(
+          missing.map(async (restaurant) => {
+            const anyRestaurant = restaurant as any;
+            try {
+              const place = new googleAny.maps.places.Place({ id: anyRestaurant.placeId });
+              await place.fetchFields({ fields: ['photos'] });
+              const uri = place.photos?.[0]?.getURI?.({ maxWidth: 480, maxHeight: 260 });
+              const resolved = resolvePhotoUrl(uri);
+              if (resolved) updates[restaurant.id] = resolved;
+            } catch {
+              // ignore per-item failures
+            }
+          })
+        );
+
+        if (!cancelled && Object.keys(updates).length > 0) {
+          setHydratedPhotoUrls((prev) => ({ ...prev, ...updates }));
+        }
+      } catch {
+        // ignore maps loading errors and keep fallback gradient
+      }
+    };
+
+    hydrateMissingPhotos();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurants, hydratedPhotoUrls]);
 
   const getUserVote = (restaurantId: string): VoteType | null => {
     const vote = votes.find((v) => v.restaurantId === restaurantId && v.userId === userId);
@@ -67,7 +119,9 @@ export default function RestaurantList({
         const anyRestaurant = restaurant as any;
         const typeLabel = (anyRestaurant.types?.[0] || 'Restaurant').replaceAll('_', ' ');
         const rating = anyRestaurant.rating;
-        const photoUrl = anyRestaurant.photoUrl || anyRestaurant.photoURL;
+        const photoUrl =
+          resolvePhotoUrl(anyRestaurant.photoUrl || anyRestaurant.photoURL || anyRestaurant.photoReference) ||
+          hydratedPhotoUrls[restaurant.id];
         const distance =
           userPosition && restaurant.lat !== undefined && restaurant.lng !== undefined
             ? distanceKm(userPosition.lat, userPosition.lng, restaurant.lat, restaurant.lng)
@@ -81,7 +135,7 @@ export default function RestaurantList({
           distance,
         };
       }),
-    [sorted, userPosition]
+    [sorted, userPosition, hydratedPhotoUrls]
   );
 
   if (restaurants.length === 0) {

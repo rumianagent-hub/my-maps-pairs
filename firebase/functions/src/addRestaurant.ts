@@ -8,6 +8,8 @@ interface PlaceInput {
   address?: string;
   lat?: number;
   lng?: number;
+  photoUrl?: string;
+  photoReference?: string;
 }
 
 interface AddRestaurantData {
@@ -63,6 +65,8 @@ export const addRestaurant = onCall<AddRestaurantData>(async (request) => {
   if (place.address) { restaurantData.address = place.address.trim(); }
   if (place.lat !== undefined) { restaurantData.lat = place.lat; }
   if (place.lng !== undefined) { restaurantData.lng = place.lng; }
+  if (place.photoUrl) { restaurantData.photoUrl = place.photoUrl.trim(); }
+  if (place.photoReference) { restaurantData.photoReference = place.photoReference.trim(); }
 
   await restaurantRef.set(restaurantData);
   await logEvent(uid, pairId, 'restaurant_added', { name: place.name });
