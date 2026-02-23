@@ -9,15 +9,25 @@ interface MapViewProps {
   mutuals: string[];
 }
 
+const DARK_MAP_STYLE: any[] = [
+  { elementType: 'geometry', stylers: [{ color: '#0f1118' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0f1118' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a93a8' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1c2233' }] },
+  { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#c0c8dd' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1528' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#7c7c8a' }] },
+];
+
 export default function MapView({ restaurants, mutuals }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
   const [mapsReady, setMapsReady] = useState(false);
   const [noKey, setNoKey] = useState(false);
 
-  // Load Google Maps JS
   useEffect(() => {
+    let cancelled = false;
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey || apiKey === 'your_google_maps_api_key') {
       setNoKey(true);
@@ -25,120 +35,95 @@ export default function MapView({ restaurants, mutuals }: MapViewProps) {
     }
 
     const loader = new Loader({ apiKey, version: 'weekly' });
-    loader.load().then(() => setMapsReady(true)).catch(() => setNoKey(true));
+    loader
+      .load()
+      .then(() => {
+        if (!cancelled && typeof window !== 'undefined' && (window as any).google) {
+          setMapsReady(true);
+        }
+      })
+      .catch(() => !cancelled && setNoKey(true));
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Init map
   useEffect(() => {
-    if (!mapsReady || !mapRef.current || mapInstanceRef.current) return;
+    if (!mapsReady || !mapRef.current || mapInstanceRef.current || typeof window === 'undefined') return;
+    const googleAny = (window as any).google;
+    if (!googleAny?.maps) return;
 
-    mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+    mapInstanceRef.current = new googleAny.maps.Map(mapRef.current, {
       zoom: 12,
-      center: { lat: 43.6532, lng: -79.3832 }, // Toronto default
+      center: { lat: 43.6532, lng: -79.3832 },
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      styles: DARK_MAP_STYLE,
     });
   }, [mapsReady]);
 
-  // Place markers
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapsReady || !mapInstanceRef.current || typeof window === 'undefined') return;
+    const googleAny = (window as any).google;
+    if (!googleAny?.maps) return;
 
-    // Clear existing markers
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    const bounds = new google.maps.LatLngBounds();
+    const bounds = new googleAny.maps.LatLngBounds();
     let hasCoords = false;
 
-    const withCoords = restaurants.filter(
-      (r) => r.lat !== undefined && r.lng !== undefined
-    );
+    restaurants
+      .filter((r) => r.lat !== undefined && r.lng !== undefined)
+      .forEach((r) => {
+        const isMutual = mutuals.includes(r.id);
+        const pos = { lat: r.lat, lng: r.lng };
 
-    withCoords.forEach((r) => {
-      const isMutual = mutuals.includes(r.id);
-      const pos = { lat: r.lat!, lng: r.lng! };
+        const marker = new googleAny.maps.Marker({
+          position: pos,
+          map: mapInstanceRef.current,
+          title: r.name,
+          icon: {
+            path: googleAny.maps.SymbolPath.CIRCLE,
+            scale: isMutual ? 12 : 8,
+            fillColor: isMutual ? '#8b5cf6' : '#7c7c8a',
+            fillOpacity: 1,
+            strokeColor: '#f5f5f7',
+            strokeWeight: 2,
+          },
+        });
 
-      const marker = new google.maps.Marker({
-        position: pos,
-        map: mapInstanceRef.current!,
-        title: r.name,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: isMutual ? 12 : 8,
-          fillColor: isMutual ? '#ef4444' : '#6b7280',
-          fillOpacity: 1,
-          strokeColor: '#fff',
-          strokeWeight: 2,
-        },
+        const infoWindow = new googleAny.maps.InfoWindow({
+          content: `<div style="padding:8px 10px;color:#f5f5f7;background:#111119"><div style="font-weight:600">${r.name}${
+            isMutual ? ' ❤️' : ''
+          }</div>${r.address ? `<div style="font-size:12px;color:#7c7c8a">${r.address}</div>` : ''}</div>`,
+        });
+
+        marker.addListener('click', () => infoWindow.open(mapInstanceRef.current, marker));
+
+        markersRef.current.push(marker);
+        bounds.extend(pos);
+        hasCoords = true;
       });
 
-      const infoWindow = new google.maps.InfoWindow({
-        content: `<div style="font-weight:600">${r.name}${isMutual ? ' ❤️' : ''}</div>${
-          r.address ? `<div style="font-size:12px;color:#666">${r.address}</div>` : ''
-        }`,
-      });
-
-      marker.addListener('click', () => {
-        infoWindow.open(mapInstanceRef.current!, marker);
-      });
-
-      markersRef.current.push(marker);
-      bounds.extend(pos);
-      hasCoords = true;
-    });
-
-    if (hasCoords) {
-      mapInstanceRef.current.fitBounds(bounds);
-    }
+    if (hasCoords) mapInstanceRef.current.fitBounds(bounds);
   }, [restaurants, mutuals, mapsReady]);
 
   if (noKey) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-center px-6 py-8">
-        <div className="text-4xl mb-3">🗺️</div>
-        <p className="text-gray-700 font-medium mb-1">Map Unavailable</p>
-        <p className="text-gray-400 text-sm">
-          Add a{' '}
-          <code className="bg-gray-100 px-1 rounded text-xs">
-            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-          </code>{' '}
-          to enable the map view.
-        </p>
-
-        {/* Fallback: list of restaurants with addresses */}
-        {restaurants.length > 0 && (
-          <div className="mt-6 w-full text-left space-y-2">
-            {restaurants.map((r) => (
-              <div key={r.id} className="card py-2 px-3">
-                <p className="font-medium text-sm text-gray-900">{r.name}</p>
-                {r.address && (
-                  <p className="text-xs text-gray-500">{r.address}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+    return <div className="p-4 text-sm text-[var(--text-secondary)]">Map unavailable (missing Google Maps API key).</div>;
   }
 
   if (!mapsReady) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent" />
-      </div>
-    );
+    return <div className="h-64 mx-4 my-4 rounded-xl shimmer" />;
   }
 
   return (
     <div>
-      <div ref={mapRef} className="w-full" style={{ height: 'calc(100vh - 160px)' }} />
-      <div className="px-4 py-3 bg-white border-t border-gray-100">
-        <p className="text-xs text-gray-500">
-          🔴 = mutual match &nbsp; ⚫ = not yet matched
-        </p>
+      <div ref={mapRef} className="w-full" style={{ height: 'calc(100vh - 176px)' }} />
+      <div className="px-4 py-3 bg-[var(--bg-card)] border-t border-white/10 text-xs text-[var(--text-secondary)]">
+        🟣 = mutual match · ⚪ = not yet matched
       </div>
     </div>
   );

@@ -11,11 +11,13 @@ import MapView from '@/components/MapView';
 import DecideCard from '@/components/DecideCard';
 import StatsPanel from '@/components/StatsPanel';
 import SessionManager from '@/components/SessionManager';
+import ExploreTab from '@/components/ExploreTab';
 import { addRestaurantFn } from '@/lib/firebase';
 import { logEvent } from '@/lib/analytics';
 
 const TABS: { id: AppTab; label: string; icon: string }[] = [
   { id: 'list', label: 'List', icon: '📋' },
+  { id: 'explore', label: 'Explore', icon: '🧭' },
   { id: 'map', label: 'Map', icon: '🗺️' },
   { id: 'decide', label: 'Decide', icon: '🎯' },
   { id: 'stats', label: 'Stats', icon: '📊' },
@@ -35,179 +37,72 @@ export default function AppPage() {
       router.replace('/login');
       return;
     }
-    if (!activePairId) {
-      router.replace('/pair');
-    }
+    if (!activePairId) router.replace('/pair');
   }, [user, loading, activePairId, router]);
 
-  useEffect(() => {
-    if (activePairId) {
-      refresh();
-    }
-  }, [activePairId, refresh]);
-
   const handleAddRestaurant = useCallback(
-    async (place: {
-      placeId?: string;
-      name: string;
-      address?: string;
-      lat?: number;
-      lng?: number;
-    }): Promise<void> => {
+    async (place: { placeId?: string; name: string; address?: string; lat?: number; lng?: number }): Promise<void> => {
       if (!activePairId || !user) return;
       await addRestaurantFn({ pairId: activePairId, place });
-      await logEvent(user.uid, activePairId, 'restaurant_added', { name: place.name });
+      await logEvent(user.uid, activePairId, 'restaurant_added', { name: place.name, source: activeTab });
       setShowAddModal(false);
       await refresh();
     },
-    [activePairId, user, refresh]
+    [activePairId, user, activeTab, refresh]
   );
 
-  const handleSignOut = async (): Promise<void> => {
-    await signOut();
-    router.replace('/login');
-  };
-
-  const handleSessionChanged = async (): Promise<void> => {
-    await refreshActivePairId();
-    router.replace('/pair');
-  };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-600 border-t-transparent" />
-      </div>
-    );
+    return <div className="h-screen shimmer" />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <div className="flex flex-col min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <header className="glass border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <span className="text-xl">🍽️</span>
-          <span className="font-bold text-gray-900">MyMaps Pairs</span>
+          <span className="font-bold gradient-text">MyMaps Pairs</span>
         </div>
         <div className="flex items-center gap-2">
           {user?.photoURL && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.photoURL} alt={user.displayName ?? 'User'} className="w-8 h-8 rounded-full" />
+            <img src={user.photoURL} alt={user.displayName ?? 'User'} className="w-8 h-8 rounded-full border border-white/20" />
           )}
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-gray-500 px-2 py-1 rounded-lg active:bg-gray-100"
-          >
-            Sign out
-          </button>
+          <button onClick={async () => { await signOut(); router.replace('/login'); }} className="text-xs text-[var(--text-secondary)] px-2 py-1 rounded-lg hover:bg-white/5">Sign out</button>
         </div>
       </header>
 
-      {/* Tab content */}
       <main className="flex-1 overflow-auto pb-20">
-        {error && (
-          <div className="mx-4 mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
-
-        {summaryLoading && !summary && (
-          <div className="flex justify-center mt-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-600 border-t-transparent" />
-          </div>
-        )}
+        {error && <div className="mx-4 mt-4 card text-red-300">{error}</div>}
+        {summaryLoading && !summary && <div className="m-4 h-28 shimmer" />}
 
         {activeTab === 'list' && (
-          <div className="px-4 py-4 space-y-4">
-            <RestaurantList
-              restaurants={summary?.restaurants ?? []}
-              votes={summary?.votes ?? []}
-              mutuals={summary?.mutuals ?? []}
-              userId={user?.uid ?? ''}
-              pairId={activePairId ?? ''}
-              onVote={refresh}
-            />
-          </div>
+          <div className="px-4 py-4"><RestaurantList restaurants={summary?.restaurants ?? []} votes={summary?.votes ?? []} mutuals={summary?.mutuals ?? []} userId={user?.uid ?? ''} pairId={activePairId ?? ''} onVote={refresh} /></div>
         )}
-
-        {activeTab === 'map' && (
-          <MapView restaurants={summary?.restaurants ?? []} mutuals={summary?.mutuals ?? []} />
-        )}
-
-        {activeTab === 'decide' && (
-          <div className="px-4 py-4">
-            <DecideCard
-              pairId={activePairId ?? ''}
-              mutuals={summary?.mutuals ?? []}
-              restaurants={summary?.restaurants ?? []}
-            />
-          </div>
-        )}
-
-        {activeTab === 'stats' && (
-          <div className="px-4 py-4">
-            <StatsPanel
-              restaurants={summary?.restaurants ?? []}
-              votes={summary?.votes ?? []}
-              mutuals={summary?.mutuals ?? []}
-              userId={user?.uid ?? ''}
-            />
-          </div>
-        )}
-
+        {activeTab === 'explore' && <ExploreTab onAddRestaurant={handleAddRestaurant} />}
+        {activeTab === 'map' && <MapView restaurants={summary?.restaurants ?? []} mutuals={summary?.mutuals ?? []} />}
+        {activeTab === 'decide' && <div className="px-4 py-4"><DecideCard pairId={activePairId ?? ''} mutuals={summary?.mutuals ?? []} restaurants={summary?.restaurants ?? []} /></div>}
+        {activeTab === 'stats' && <div className="px-4 py-4"><StatsPanel restaurants={summary?.restaurants ?? []} votes={summary?.votes ?? []} mutuals={summary?.mutuals ?? []} userId={user?.uid ?? ''} /></div>}
         {activeTab === 'session' && summary && (
-          <div className="px-4 py-4">
-            <SessionManager
-              pairId={activePairId ?? ''}
-              inviteCode={summary.inviteCode}
-              members={summary.members}
-              ownerId={summary.ownerId}
-              currentUserId={user?.uid ?? ''}
-              onSessionChanged={handleSessionChanged}
-            />
-          </div>
+          <div className="px-4 py-4"><SessionManager pairId={activePairId ?? ''} inviteCode={summary.inviteCode} members={summary.members} ownerId={summary.ownerId} currentUserId={user?.uid ?? ''} onSessionChanged={async () => { await refreshActivePairId(); router.replace('/pair'); }} /></div>
         )}
       </main>
 
-      {/* FAB – add restaurant */}
       {activeTab === 'list' && (
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="fixed bottom-20 right-4 w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl z-20 active:bg-primary-700"
-        >
-          +
-        </button>
+        <button onClick={() => setShowAddModal(true)} className="fixed bottom-20 right-4 w-14 h-14 accent-gradient text-white rounded-full glow-md flex items-center justify-center text-2xl z-20 card-hover">+</button>
       )}
 
-      {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-100 flex z-10">
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[var(--bg-card)] border-t border-white/10 flex z-10 overflow-x-auto">
         {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors ${
-              activeTab === tab.id ? 'text-primary-600' : 'text-gray-400 active:text-gray-600'
-            }`}
-          >
-            <span className="text-xl">{tab.icon}</span>
-            <span>{tab.label}</span>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`min-w-[78px] flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium ${activeTab === tab.id ? 'text-[var(--accent-light)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+            <span className="text-lg">{tab.icon}</span><span>{tab.label}</span>
           </button>
         ))}
       </nav>
 
-      {/* Add restaurant modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 z-30 flex items-end" onClick={() => setShowAddModal(false)}>
-          <div
-            className="bg-white w-full max-w-[480px] mx-auto rounded-t-3xl p-6 max-h-[85vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Add a Restaurant</h2>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 text-2xl leading-none">
-                ×
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-black/60 z-30 flex items-end" onClick={() => setShowAddModal(false)}>
+          <div className="bg-[var(--bg-card)] w-full max-w-[480px] mx-auto rounded-t-3xl p-6 max-h-[85vh] overflow-auto border border-white/10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold">Add a Restaurant</h2><button onClick={() => setShowAddModal(false)} className="text-[var(--text-secondary)] text-2xl leading-none">×</button></div>
             <RestaurantSearch onSelect={handleAddRestaurant} />
           </div>
         </div>
