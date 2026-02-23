@@ -39,19 +39,19 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-600 border-t-transparent" />
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[var(--accent)] border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 bg-white">
+    <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 bg-[var(--bg-primary)] animate-fade-in">
       {/* Logo / Hero */}
       <div className="mb-10 text-center">
         <div className="text-6xl mb-4">🍽️</div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">MyMaps Pairs</h1>
-        <p className="text-gray-500 text-base leading-relaxed">
+        <h1 className="text-3xl font-bold gradient-text mb-2">MyMaps Pairs</h1>
+        <p className="text-[var(--text-secondary)] text-base leading-relaxed">
           Decide where to eat together.
           <br />
           No more "I don't mind, you pick."
@@ -59,16 +59,16 @@ export default function LoginPage() {
       </div>
 
       {/* Features list */}
-      <div className="w-full mb-10 space-y-3">
+      <div className="w-full mb-10 space-y-3 stagger">
         {[
           { icon: '💑', text: 'Create a pair with your partner or friend' },
           { icon: '📍', text: 'Add restaurants you both want to try' },
           { icon: '❤️', text: 'Vote like, love, or dislike in secret' },
           { icon: '🎯', text: 'Get matched on mutual favourites' },
         ].map((feature) => (
-          <div key={feature.text} className="flex items-center gap-3">
+          <div key={feature.text} className="flex items-center gap-3 bg-[var(--bg-elevated)] border border-white/5 rounded-xl p-3 card-hover">
             <span className="text-2xl">{feature.icon}</span>
-            <span className="text-gray-700">{feature.text}</span>
+            <span className="text-[var(--text-primary)] text-sm">{feature.text}</span>
           </div>
         ))}
       </div>
@@ -77,7 +77,7 @@ export default function LoginPage() {
       <button
         onClick={handleSignIn}
         disabled={signingIn}
-        className="flex items-center justify-center gap-3 w-full bg-white border border-gray-300 rounded-xl py-3 px-6 font-semibold text-gray-700 shadow-sm active:bg-gray-50 transition-colors disabled:opacity-50"
+        className="flex items-center justify-center gap-3 w-full glass border border-white/10 rounded-2xl py-3 px-6 font-semibold text-[var(--text-primary)] hover:bg-white/5 transition-all glow-sm disabled:opacity-50"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
@@ -101,10 +101,10 @@ export default function LoginPage() {
       </button>
 
       {error && (
-        <p className="mt-4 text-red-600 text-sm text-center">{error}</p>
+        <p className="mt-4 text-red-500 text-sm text-center">{error}</p>
       )}
 
-      <p className="mt-8 text-xs text-gray-400 text-center">
+      <p className="mt-8 text-xs text-[var(--text-secondary)] text-center">
         By signing in, you agree to our Terms of Service and Privacy Policy.
       </p>
     </div>
