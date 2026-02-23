@@ -1,5 +1,6 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
+'use client';
+
+import { getDb } from './firebase';
 
 export async function logEvent(
   userId: string | null,
@@ -8,6 +9,9 @@ export async function logEvent(
   payload: Record<string, unknown> = {}
 ): Promise<void> {
   try {
+    const db = await getDb();
+    if (!db) return;
+    const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
     await addDoc(collection(db, 'events'), {
       userId,
       pairId,
@@ -16,7 +20,6 @@ export async function logEvent(
       createdAt: serverTimestamp(),
     });
   } catch (err) {
-    // Analytics failures should never crash the app
     console.warn('[analytics] logEvent failed:', err);
   }
 }
