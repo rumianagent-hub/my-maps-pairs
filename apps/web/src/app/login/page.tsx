@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { logEvent } from '@/lib/analytics';
+import { getAuth } from '@/lib/firebase';
 
 export default function LoginPage() {
   const { user, loading, activePairId, signInWithGoogle } = useAuth();
@@ -23,7 +24,11 @@ export default function LoginPage() {
     setError(null);
     try {
       await signInWithGoogle();
-      await logEvent(null, null, 'login_google', {});
+      const auth = await getAuth();
+      const uid = auth?.currentUser?.uid;
+      if (uid) {
+        await logEvent(uid, null, 'login_google', {});
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sign-in failed';
       setError(msg);

@@ -10,7 +10,7 @@
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
     "emulators": "cd firebase && firebase emulators:start",
-    "deploy": "cd firebase && firebase deploy"
+    "deploy": "cd firebase && firebase deploy --only firestore,functions"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

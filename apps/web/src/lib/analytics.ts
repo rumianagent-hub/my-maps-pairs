@@ -8,6 +8,9 @@ export async function logEvent(
   eventName: string,
   payload: Record<string, unknown> = {}
 ): Promise<void> {
+  // Firestore rules require userId to match request.auth.uid for client writes.
+  if (!userId) return;
+
   try {
     const db = await getDb();
     if (!db) return;
