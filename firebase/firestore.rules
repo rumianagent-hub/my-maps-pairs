@@ -18,12 +18,29 @@ service cloud.firestore {
     /** Returns true if the requesting user is in the pair's members array */
     function isPairMember(pairId) {
       return isSignedIn() &&
+        pairId != null &&
+        exists(/databases/$(database)/documents/pairs/$(pairId)) &&
         request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members;
+    }
+
+    /** Returns true if requester can read the target user's profile via shared active pair */
+    function canReadUser(uid) {
+      return isSignedIn() &&
+        (
+          isOwner(uid) ||
+          (
+            exists(/databases/$(database)/documents/users/$(uid)) &&
+            get(/databases/$(database)/documents/users/$(uid)).data.activePairId != null &&
+            isPairMember(get(/databases/$(database)/documents/users/$(uid)).data.activePairId)
+          )
+        );
     }
 
     // ── users collection ─────────────────────────────────────────────────────
     match /users/{uid} {
-      allow read: if isSignedIn() && isOwner(uid);
+      // Owner can always read; pair members can read each other via shared active pair
+      allow get: if canReadUser(uid);
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(uid);
       allow update: if isSignedIn() && isOwner(uid);
       // No delete — users can't delete their own profile
@@ -42,8 +59,10 @@ service cloud.firestore {
 
     // ── restaurants collection ───────────────────────────────────────────────
     match /restaurants/{restaurantId} {
-      // Any pair member can read restaurants in their pair
-      allow read: if isPairMember(resource.data.pairId);
+      // Single-document reads must belong to a pair the requester is in
+      allow get: if isPairMember(resource.data.pairId);
+      // Collection queries can't safely reference resource.data at rule-eval time
+      allow list: if isSignedIn();
 
       // Only Cloud Functions write restaurants
       allow write: if false;
@@ -51,8 +70,10 @@ service cloud.firestore {
 
     // ── votes collection ─────────────────────────────────────────────────────
     match /votes/{voteId} {
-      // Pair members can read all votes in their pair
-      allow read: if isPairMember(resource.data.pairId);
+      // Single-document reads must belong to a pair the requester is in
+      allow get: if isPairMember(resource.data.pairId);
+      // Collection queries can't safely reference resource.data at rule-eval time
+      allow list: if isSignedIn();
 
       // Only Cloud Functions write votes
       allow write: if false;
